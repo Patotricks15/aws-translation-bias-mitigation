@@ -1,0 +1,22 @@
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfstate.lock.info
+.terraform.lock.hcl
+crash.log
+
+# Lambda build artefacts
+.build/
+*.zip
+
+# Diagram generation
+.diagram-venv/
+src/**/__pycache__/
+src/**/*.pyc
+
+# Notebook checkpoints
+notebooks/.ipynb_checkpoints/
+
+# Local env
+.env

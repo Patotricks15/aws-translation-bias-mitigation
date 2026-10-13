@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${project_name} — Translation service</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0f172a;
+      --panel: rgba(15, 23, 42, 0.9);
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #22d3ee;
+      --border: rgba(148, 163, 184, 0.22);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      color: var(--text);
+      background: linear-gradient(135deg, #020617 0%, #0f172a 55%, #111827 100%);
+      padding: 40px 20px;
+    }
+    .shell {
+      max-width: 720px;
+      margin: 0 auto;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 32px;
+    }
+    h1 { font-size: 1.8rem; margin-top: 0; }
+    p.lede { color: var(--muted); }
+    label { display: block; margin-top: 16px; font-size: 0.85rem; color: var(--muted); }
+    textarea, input, select {
+      width: 100%;
+      margin-top: 6px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text);
+      font-size: 1rem;
+      font-family: inherit;
+    }
+    textarea { min-height: 90px; resize: vertical; }
+    .langs { display: flex; gap: 12px; }
+    .langs > div { flex: 1; }
+    button {
+      margin-top: 20px;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 10px;
+      background: var(--accent);
+      color: #0f172a;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button:disabled { opacity: 0.6; cursor: wait; }
+    #result {
+      margin-top: 24px;
+      padding: 16px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.05);
+      display: none;
+      line-height: 1.6;
+    }
+    #result .mitigations { margin-top: 10px; font-size: 0.85rem; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <h1>Translation service</h1>
+    <p class="lede">Translate text with a fine-tuned, gender-bias-mitigated translation model.</p>
+
+    <form id="translate-form">
+      <label for="text">Text to translate</label>
+      <textarea id="text" placeholder="e.g. The chairman said he would review it." required></textarea>
+
+      <div class="langs">
+        <div>
+          <label for="source_lang">Source language</label>
+          <input id="source_lang" type="text" value="en" />
+        </div>
+        <div>
+          <label for="target_lang">Target language</label>
+          <input id="target_lang" type="text" value="es" />
+        </div>
+      </div>
+
+      <button id="send" type="submit">Translate</button>
+    </form>
+
+    <div id="result"></div>
+  </div>
+
+  <script>
+    const TRANSLATION_API_ENDPOINT = "${translation_api_endpoint}";
+    const form = document.getElementById("translate-form");
+    const sendButton = document.getElementById("send");
+    const resultEl = document.getElementById("result");
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const text = document.getElementById("text").value.trim();
+      if (!text) return;
+
+      const source_lang = document.getElementById("source_lang").value.trim() || "en";
+      const target_lang = document.getElementById("target_lang").value.trim() || "es";
+
+      sendButton.disabled = true;
+      resultEl.style.display = "none";
+
+      try {
+        const response = await fetch(TRANSLATION_API_ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text, source_lang, target_lang }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Request failed with status $${response.status}`);
+        }
+
+        const data = await response.json();
+        renderResult(data);
+      } catch (err) {
+        resultEl.style.display = "block";
+        resultEl.textContent = `Error: $${err.message}`;
+      } finally {
+        sendButton.disabled = false;
+      }
+    });
+
+    function renderResult(data) {
+      resultEl.style.display = "block";
+      resultEl.textContent = data.translated_text;
+
+      if (data.bias_mitigations_applied && data.bias_mitigations_applied.length) {
+        const mitigations = document.createElement("div");
+        mitigations.className = "mitigations";
+        const terms = data.bias_mitigations_applied
+          .map((m) => `"$${m.from}" → "$${m.to}"`)
+          .join(", ");
+        mitigations.textContent = `Gender bias mitigations applied: $${terms}`;
+        resultEl.appendChild(mitigations);
+      }
+    }
+  </script>
+</body>
+</html>
